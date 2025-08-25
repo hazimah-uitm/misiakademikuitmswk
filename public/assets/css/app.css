@@ -650,14 +650,14 @@ a {
 }
 
 .bg-login {
-	background-image: url(../images/login-images/bg-login-img.png);
+	background-image: url(../images/login-images/bg-lock-screen.jpg);
 	background-size: cover;
 	background-position: center;
 	background-repeat: no-repeat;
 	background-attachment: fixed
 }
 
-.bg-login::before {
+/* .bg-login::before {
 	content: "";
 	position: absolute;
 	top: 0;
@@ -666,7 +666,7 @@ a {
 	height: 100%;
 	background-color: rgba(0, 0, 0, 0.75);
 	z-index: 1;
-}
+} */
 
 .bg-login>* {
 	position: relative;
