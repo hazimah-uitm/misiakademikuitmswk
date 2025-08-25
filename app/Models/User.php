@@ -11,7 +11,8 @@ use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
-    use Notifiable, LogsActivity, HasRoles, SoftDeletes;
+    use Notifiable, LogsActivity, SoftDeletes;
+    use HasRoles;
 
     protected static $logAttributes = ['*'];
 
@@ -23,13 +24,15 @@ class User extends Authenticatable
      * @var array
      */
     protected $fillable = [
-        'name', 
-        'staff_id', 
-        'email', 
+        'name',
+        'staff_id',
+        'email',
+        'profile_image',
         'password',
         'position_id',
+        'ptj_id',
         'campus_id',
-        'office_phone_no',
+        'phone_no',
         'publish_status'
     ];
 
@@ -39,7 +42,8 @@ class User extends Authenticatable
      * @var array
      */
     protected $hidden = [
-        'password', 'remember_token',
+        'password',
+        'remember_token',
     ];
 
     protected $casts = [
@@ -64,5 +68,10 @@ class User extends Authenticatable
     public function position()
     {
         return $this->belongsTo(Position::class);
+    }
+
+    public function ptj()
+    {
+        return $this->belongsTo(Ptj::class);
     }
 }

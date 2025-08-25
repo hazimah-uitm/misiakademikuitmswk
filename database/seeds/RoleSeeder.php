@@ -23,16 +23,6 @@ class RoleSeeder extends Seeder
                 'publish_status' => true,
                 'guard_name' => 'web',
             ],
-            [
-                'name' => 'Pegawai Penyemak',
-                'publish_status' => true,
-                'guard_name' => 'web',
-            ],
-            [
-                'name' => 'Pemilik',
-                'publish_status' => true,
-                'guard_name' => 'web',
-            ],
         ]);
     }
 }

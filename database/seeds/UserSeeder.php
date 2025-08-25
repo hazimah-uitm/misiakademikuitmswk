@@ -15,15 +15,16 @@ class UserSeeder extends Seeder
     {
         User::insert([
             [
-                'name' => 'Hazimah',
+                 'name' => 'Hazimah',
                 'staff_id' => '111111',
                 'email' => 'hazimahpethie@gmail.com',
-                'password' => Hash::make('hazimah123'),
+                'password' => Hash::make('user123'),
                 'position_id' => 1,
-                'campus_id' => 2,
-                'office_phone_no' => '082111111',
-                'publish_status' => true,
-                'email_verified_at' => now(), 
+                'ptj_id'        => 1,                  
+                'campus_id'     => 2,                  
+                'phone_no'  => '082111111',        
+                'publish_status' => true,                  
+                'email_verified_at' => now(),
             ],
         ]);
     }

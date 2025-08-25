@@ -70,11 +70,11 @@ a {
 }
 
 .logo-text {
-	font-size: 26px;
-	margin-left: 10px;
-	margin-top: 5px;
+	font-size: 16px;
+	margin-left: 12px;
+	margin-top: 0px;
 	margin-bottom: 0;
-	letter-spacing: 8px;
+	letter-spacing: 2px;
 	color: #fff
 }
 
