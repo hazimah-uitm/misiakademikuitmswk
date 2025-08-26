@@ -42,6 +42,11 @@ Route::post('password/reset', 'Auth\ResetPasswordController@reset')->name('passw
 
 Route::middleware('auth')->group(function () {
 
+    //Visitor
+    Route::get('visitor', 'VisitorController@index')->name('visitor');
+    Route::get('visitor/view/{id}', 'VisitorController@show')->name('visitor.show');
+    Route::get('/visitor/search', 'VisitorController@search')->name('visitor.search');
+
     //Campus
     Route::get('campus', 'CampusController@index')->name('campus');
     Route::get('campus/view/{id}', 'CampusController@show')->name('campus.show');
@@ -98,6 +103,17 @@ Route::middleware('auth')->group(function () {
     Route::get('/user-role/trash', 'UserRoleController@trashList')->name('user-role.trash');
     Route::get('/user-role/{id}/restore', 'UserRoleController@restore')->name('user-role.restore');
     Route::delete('/user-role/{id}/force-delete', 'UserRoleController@forceDelete')->name('user-role.forceDelete');
+
+
+    //Visitor
+    Route::get('visitor/create', 'VisitorController@create')->name('visitor.create');
+    Route::post('visitor/store', 'VisitorController@store')->name('visitor.store');
+    Route::get('visitor/{id}/edit', 'VisitorController@edit')->name('visitor.edit');
+    Route::post('visitor/{id}', 'VisitorController@update')->name('visitor.update');
+    Route::delete('visitor/{id}', 'VisitorController@destroy')->name('visitor.destroy');
+    Route::get('/visitor/trash', 'VisitorController@trashList')->name('visitor.trash');
+    Route::get('/visitor/{id}/restore', 'VisitorController@restore')->name('visitor.restore');
+    Route::delete('/visitor/{id}/force-delete', 'VisitorController@forceDelete')->name('visitor.forceDelete');
 
     //Campus
     Route::get('campus/create', 'CampusController@create')->name('campus.create');

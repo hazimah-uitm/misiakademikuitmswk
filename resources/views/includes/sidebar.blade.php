@@ -17,9 +17,9 @@
             <div class="menu-title">Dashboard</div>
         </a>
     </li>
-    <li class="{{ Request::routeIs('home') ? 'mm-active' : '' }}">
-        <a href="{{ route('home') }}">
-            <div class="parent-icon"><i class='bx bx-home-circle'></i></div>
+    <li class="{{ Request::is('visitor*') ? 'mm-active' : '' }}">
+        <a href="{{ route('visitor') }}">
+            <div class="parent-icon"><i class='bx bx-comment-detail'></i></div>
             <div class="menu-title">Data Pengunjung</div>
         </a>
     </li>
