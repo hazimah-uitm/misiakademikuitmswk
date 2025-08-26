@@ -65,12 +65,11 @@
                     <thead>
                         <tr>
                             <th>#</th>
-                            <th class="text-wrap" style="width: 90px;">Nama Penuh</th>
+                            <th>Nama Penuh</th>
                             <th>No. Telefon</th>
                             <th>Emel</th>
                             <th>Program/Bidang</th>
                             <th>Lokasi</th>
-                            <th>Tarikh Respons</th>
                             <th>Tindakan</th>
                         </tr>
                     </thead>
@@ -93,8 +92,7 @@
                                             -
                                         @endif
                                     </td>
-                                    <td>{{ $visitor->lokasi }}</td>
-                                    <td>{{ optional($visitor->response_at)->format('Y-m-d H:i') }}</td>
+                                    <td>{{ $visitor->lokasi ?? "-"}}</td>
                                     <td>
                                         <a href="{{ route('visitor.edit', $visitor->id) }}" class="btn btn-info btn-sm"
                                             data-bs-toggle="tooltip" data-bs-placement="bottom" title="Kemaskini">
