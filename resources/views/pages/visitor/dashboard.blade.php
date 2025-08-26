@@ -8,7 +8,8 @@
                 DASHBOARD MISI AKADEMIK {{ $tahun }}
             </h2>
 
-            <form id="searchFilterForm" method="GET" action="{{ route('home') }}" class="d-flex flex-wrap align-items-center gap-2">
+            <form id="searchFilterForm" method="GET" action="{{ route('home') }}"
+                class="d-flex flex-wrap align-items-center gap-2">
                 <div>
                     <input type="text" name="search" class="form-control form-select-sm rounded-pill shadow-sm"
                         placeholder="Carian Data Pengunjung.." value="{{ request('search') }}">
@@ -120,24 +121,43 @@
         const programLabels = @json($programLabels);
         const programData = @json($programData);
 
-        // Top Program (bar)
+        const total = programData.reduce((a, b) => a + b, 0);
+
         new Chart(document.getElementById('programChart').getContext('2d'), {
             type: 'bar',
             data: {
                 labels: programLabels,
                 datasets: [{
                     label: 'Bil. Minat',
-                    data: programData
+                    data: programData,
+                    backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
                 }]
             },
             options: {
                 responsive: true,
+                animation: {
+                    duration: 1200, // tempoh animation
+                    easing: 'easeOutBounce' // gaya animation
+                },
                 plugins: {
                     legend: {
                         display: false
                     },
                     title: {
                         display: false
+                    },
+                    datalabels: {
+                        anchor: 'end',
+                        align: 'end',
+                        formatter: (value) => {
+                            let percent = ((value / total) * 100).toFixed(1) + '%';
+                            return value + ' (' + percent + ')';
+                        },
+                        font: {
+                            weight: 'bold'
+                        }
                     }
                 },
                 scales: {
@@ -156,7 +176,8 @@
                         }
                     }
                 }
-            }
+            },
+            plugins: [ChartDataLabels]
         });
     </script>
 @endsection
