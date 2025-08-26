@@ -16,8 +16,7 @@
                 </div>
                 {{-- Tahun --}}
                 <div>
-                    <select name="tahun" class="form-select form-select-sm shadow-sm rounded-pill"
-                        onchange="this.form.submit()">
+                    <select name="tahun" class="form-select form-select-sm shadow-sm rounded-pill">
                         <option value="">📅 Semua Tahun</option>
                         @foreach ($availableYears as $y)
                             <option value="{{ $y }}" {{ $tahun == $y ? 'selected' : '' }}>{{ $y }}
@@ -28,8 +27,7 @@
 
                 {{-- Lokasi --}}
                 <div>
-                    <select name="lokasi" class="form-select form-select-sm shadow-sm rounded-pill"
-                        onchange="this.form.submit()">
+                    <select name="lokasi" class="form-select form-select-sm shadow-sm rounded-pill">
                         <option value="">📍 Semua Lokasi</option>
                         @foreach ($availableLokasi as $l)
                             <option value="{{ $l }}" {{ $lokasi == $l ? 'selected' : '' }}>{{ $l }}
@@ -63,10 +61,14 @@
 
         {{-- Charts --}}
 
-        <div class="card border shadow-sm h-100">
+        <div class="card border shadow-sm">
             <div class="card-body">
-                <h6 class="fw-bold mb-3">Top 10 Program/Bidang</h6>
-                <canvas id="programChart" height="100"></canvas>
+
+                <!-- ✅ Bekas tetap 380px -->
+                <div style="position:relative; height:380px;">
+                    <canvas id="programChart"></canvas>
+                </div>
+
                 @if (count($programLabels) === 0)
                     <div class="text-muted small mt-2">Tiada data program untuk kombinasi filter semasa.</div>
                 @endif
@@ -118,66 +120,135 @@
     </script>
 
     <script>
-        const programLabels = @json($programLabels);
-        const programData = @json($programData);
+        document.addEventListener('DOMContentLoaded', function() {
+            const ctx = document.getElementById('programChart').getContext('2d');
 
-        const total = programData.reduce((a, b) => a + b, 0);
+            const programLabels = @json($programLabels);
+            const programData = @json($programData);
 
-        new Chart(document.getElementById('programChart').getContext('2d'), {
-            type: 'bar',
-            data: {
-                labels: programLabels,
-                datasets: [{
-                    label: 'Bil. Minat',
-                    data: programData,
-                    backgroundColor: 'rgba(54, 162, 235, 0.6)',
-                    borderColor: 'rgba(54, 162, 235, 1)',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                animation: {
-                    duration: 1200, // tempoh animation
-                    easing: 'easeOutBounce' // gaya animation
+            // jumlah keseluruhan untuk kira peratus
+            const totalAll = programData.reduce((sum, v) => sum + (parseFloat(v) || 0), 0);
+
+            const colors = [
+                'rgba(46, 204, 113, 0.85)', // hijau terang
+                'rgba(52, 152, 219, 0.85)', // biru
+                'rgba(231, 76, 60, 0.85)', // merah
+                'rgba(241, 196, 15, 0.85)', // kuning
+                'rgba(155, 89, 182, 0.85)', // ungu
+                'rgba(230, 126, 34, 0.85)', // oren
+                'rgba(26, 188, 156, 0.85)', // turquoise
+                'rgba(149, 165, 166, 0.85)', // kelabu
+                'rgba(243, 156, 18, 0.85)', // amber
+                'rgba(52, 73, 94, 0.85)' // navy gelap
+            ];
+
+            const backgroundColors = programData.map((_, i) => colors[i % colors.length]);
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: programLabels,
+                    datasets: [{
+                        label: 'Bil. Minat',
+                        data: programData,
+                        backgroundColor: backgroundColors
+                    }]
                 },
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    title: {
-                        display: false
-                    },
-                    datalabels: {
-                        anchor: 'end',
-                        align: 'end',
-                        formatter: (value) => {
-                            let percent = ((value / total) * 100).toFixed(1) + '%';
-                            return value + ' (' + percent + ')';
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
                         },
-                        font: {
-                            weight: 'bold'
-                        }
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
                         title: {
                             display: true,
-                            text: 'Jumlah'
+                            text: 'TOP 10 PROGRAM/BIDANG',
+                            font: {
+                                size: 14,
+                                weight: 'bold'
+                            },
+                            padding: {
+                                top: 10,
+                                bottom: 45
+                            },
+                            color: '#000'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => {
+                                    const value = ctx.parsed.y || 0;
+                                    const pct = totalAll > 0 ? ((value / totalAll) * 100).toFixed(2) :
+                                        '0.00';
+                                    return ` ${value} (${pct}%)`;
+                                }
+                            }
                         }
                     },
-                    x: {
-                        ticks: {
-                            autoSkip: false,
-                            maxRotation: 45,
-                            minRotation: 0
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Jumlah',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                },
+                                color: '#000'
+                            },
+                            ticks: {
+                                callback: (v) => Number.isInteger(v) ? v : ''
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Program/Bidang',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                },
+                                color: '#000'
+                            },
+                            ticks: {
+                                autoSkip: false,
+                                maxRotation: 45,
+                                minRotation: 0
+                            }
                         }
                     }
-                }
-            },
-            plugins: [ChartDataLabels]
+                },
+                plugins: [{
+                    id: 'percentageLabels',
+                    afterDatasetsDraw(chart) {
+                        const {
+                            ctx,
+                            data
+                        } = chart;
+                        ctx.save();
+                        ctx.font = 'bold 12px Arial';
+                        ctx.textAlign = 'center';
+                        ctx.fillStyle = '#000';
+
+                        data.datasets[0].data.forEach((value, index) => {
+                            const meta = chart.getDatasetMeta(0);
+                            const bar = meta.data[index];
+                            if (!bar) return;
+
+                            const x = bar.x;
+                            const y = bar.y - 10;
+
+                            const pct = totalAll > 0 ? ((value / totalAll) * 100).toFixed(
+                                1) : '0.0';
+                            ctx.fillText(`${value}`, x, y - 12);
+                            ctx.fillText(`(${pct}%)`, x, y + 3);
+                        });
+
+                        ctx.restore();
+                    }
+                }]
+            });
         });
     </script>
 @endsection
