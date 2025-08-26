@@ -65,7 +65,7 @@
                     <thead>
                         <tr>
                             <th>#</th>
-                            <th>Nama Penuh</th>
+                            <th class="text-wrap" style="width: 90px;">Nama Penuh</th>
                             <th>No. Telefon</th>
                             <th>Emel</th>
                             <th>Program/Bidang</th>
@@ -78,7 +78,7 @@
                         @if (count($visitorList) > 0)
                             @foreach ($visitorList as $visitor)
                                 <tr>
-                                    <td>{{ $loop->iteration }}</td>
+                                    <td>{{ ($visitorList->currentPage() - 1) * $visitorList->perPage() + $loop->iteration }}</td>
                                     <td class="text-wrap">{{ ucfirst($visitor->full_name) }}</td>
                                     <td>{{ $visitor->phone }}</td>
                                     <td>{{ $visitor->email }}</td>
