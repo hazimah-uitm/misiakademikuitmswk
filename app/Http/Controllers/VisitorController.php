@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Imports\VisitorsImport;
 use App\Models\Visitor;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
 
 class VisitorController extends Controller
 {
@@ -75,6 +77,17 @@ class VisitorController extends Controller
         ]);
     }
 
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:xlsx,csv',
+        ]);
+    
+        Excel::import(new VisitorsImport, $request->file('file'));
+    
+        return back()->with('success', 'Data Pengunjung berjaya diimport!');
+    }
+
     public function edit(Request $request, $id)
     {
         return view('pages.visitor.edit', [
@@ -109,7 +122,6 @@ class VisitorController extends Controller
             'lokasi'
         ]);
 
-        // ✅ Tukar "YYYY-MM-DDTHH:MM" => "YYYY-MM-DD HH:MM:SS"
         if (!empty($data['response_at'])) {
             $data['response_at'] = Carbon::createFromFormat('Y-m-d\TH:i', $data['response_at'])
                 ->format('Y-m-d H:i:s');

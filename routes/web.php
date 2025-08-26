@@ -114,6 +114,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/visitor/trash', 'VisitorController@trashList')->name('visitor.trash');
     Route::get('/visitor/{id}/restore', 'VisitorController@restore')->name('visitor.restore');
     Route::delete('/visitor/{id}/force-delete', 'VisitorController@forceDelete')->name('visitor.forceDelete');
+    Route::post('/visitor-import', 'VisitorController@import')->name('visitor.import');
 
     //Campus
     Route::get('campus/create', 'CampusController@create')->name('campus.create');
