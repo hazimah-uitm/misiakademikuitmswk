@@ -7,6 +7,7 @@ use App\Models\Visitor;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
 
 class VisitorController extends Controller
@@ -22,6 +23,83 @@ class VisitorController extends Controller
         return view('pages.visitor.index', [
             'visitorList' => $visitorList,
             'perPage' => $perPage,
+        ]);
+    }
+
+
+    public function dashboard(Request $request)
+    {
+        // ===== Filters =====
+        $tahun   = $request->input('tahun');           
+        $lokasi  = $request->input('lokasi');          
+        $search  = $request->input('search');          
+
+        $base = Visitor::query();
+
+        // apply filters
+        if (!empty($tahun)) {
+            $base->whereYear('response_at', $tahun);
+        }
+        if (!empty($lokasi)) {
+            $base->where('lokasi', $lokasi);
+        }
+        if (!empty($search)) {
+            $base->where(function ($q) use ($search) {
+                $q->where('full_name', 'LIKE', "%{$search}%")
+                    ->orWhere('lokasi', 'LIKE', "%{$search}%")
+                    ->orWhere('program_bidang', 'LIKE', "%{$search}%");
+            });
+        }
+
+        // untuk dropdown & paparan
+        $availableYears   = Visitor::whereNotNull('response_at')
+            ->select(DB::raw('YEAR(response_at) as y'))->distinct()
+            ->orderBy('y', 'desc')->pluck('y');
+        $availableLokasi  = Visitor::whereNotNull('lokasi')
+            ->select('lokasi')->distinct()->orderBy('lokasi')->pluck('lokasi');
+
+        // ===== KPI ringkas =====
+        $totalResponden   = (clone $base)->count();
+
+        // ===== Top Program/Bidang (bar chart) =====
+        // Ambil terus senarai string program_bidang (collection of strings), bukan rows model
+        $allPrograms = (clone $base)
+            ->whereNotNull('program_bidang')
+            ->where('program_bidang', '<>', '')
+            ->pluck('program_bidang');
+
+        $counter = [];
+        foreach ($allPrograms as $progStr) {
+            if (!$progStr) continue;
+            // pecah ikut koma/semicolon
+            $items = preg_split('/[,;]+/', $progStr);
+            foreach ($items as $raw) {
+                $name = trim($raw);
+                if ($name === '') continue;
+                $name = preg_replace('/\s+/', ' ', $name); // normalisasi ringkas
+                $counter[$name] = isset($counter[$name]) ? $counter[$name] + 1 : 1;
+            }
+        }
+
+        arsort($counter);
+        $topProgram     = array_slice($counter, 0, 10, true);
+        $programLabels  = array_keys($topProgram);
+        $programData    = array_values($topProgram);
+
+        return view('pages.visitor.dashboard', [
+            // filters & dropdowns
+            'tahun'            => $tahun,
+            'lokasi'           => $lokasi,
+            'search'           => $search,
+            'availableYears'   => $availableYears,
+            'availableLokasi'  => $availableLokasi,
+
+            // KPI
+            'totalResponden'   => $totalResponden,
+
+            // charts
+            'programLabels'    => $programLabels,
+            'programData'      => $programData,
         ]);
     }
 
@@ -82,9 +160,9 @@ class VisitorController extends Controller
         $request->validate([
             'file' => 'required|mimes:xlsx,csv',
         ]);
-    
+
         Excel::import(new VisitorsImport, $request->file('file'));
-    
+
         return back()->with('success', 'Data Pengunjung berjaya diimport!');
     }
 

@@ -63,7 +63,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/ptj/search', 'PtjController@search')->name('ptj.search');
 
 
-    Route::get('/home', 'HomeController@index')->name('home');
+    Route::get('/home', 'VisitorController@dashboard')->name('home');
 
     // User Profile
     Route::get('profile/{id}', 'UserProfileController@show')->name('profile.show');
