@@ -9,34 +9,52 @@ use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
 class VisitorsImport implements ToModel, WithHeadingRow
 {
-    public function model(array $row)
+   public function model(array $row)
     {
-        // Kalau nak semak key yang Maatwebsite hasilkan:
-        // dd(array_keys($row));
-
-        // Excel headers (after slug by Maatwebsite):
-        // 'timestamp'
-        // 'nama_penuh_huruf_besar'
-        // 'no_telefon_bimbit'
-        // 'alamat_emel'
-        // 'senarai_program_bidang_pengajian'
-        // 'lokasi'
-
         $responseAt = $this->parseExcelDateTime($row['timestamp'] ?? null);
 
-        return new Visitor([
-            'response_at'    => $responseAt, // timestamp (nullable)
+        $data = [
+            'response_at'    => $responseAt,
             'full_name'      => $this->nullIfNA($row['nama_penuh_huruf_besar'] ?? null),
             'phone'          => $this->nullIfNA($row['no_telefon_bimbit'] ?? null),
-            'email'          => $this->nullIfNA($row['alamat_emel'] ?? null),
+            'email'          => $this->normalizeEmail($row['alamat_emel'] ?? null),
             'program_bidang' => $this->nullIfNA($row['senarai_program_bidang_pengajian'] ?? null),
             'lokasi'         => $this->nullIfNA($row['lokasi'] ?? null),
-        ]);
+        ];
+
+        // Tetapkan "kunci" untuk cari rekod sedia ada
+        $attrs = $this->buildUniqueAttrs($data);
+
+        // Update jika jumpa; kalau tak, create
+        return Visitor::updateOrCreate($attrs, $data);
     }
 
-    /**
-     * Tukar 'NA' atau string kosong kepada null
-     */
+    private function buildUniqueAttrs(array $data): array
+    {
+        // Utama: email + response_at
+        if (!empty($data['email']) && !empty($data['response_at'])) {
+            return [
+                'email'       => $data['email'],
+                'response_at' => $data['response_at'],
+            ];
+        }
+
+        // Fallback: full_name + phone + response_at
+        return [
+            'full_name'   => $data['full_name'] ?? null,
+            'phone'       => $data['phone'] ?? null,
+            'response_at' => $data['response_at'] ?? null,
+        ];
+    }
+
+    private function normalizeEmail($value)
+    {
+        if ($value === null) return null;
+        $trim = trim((string)$value);
+        if ($trim === '' || strtoupper($trim) === 'NA') return null;
+        return strtolower($trim);
+    }
+
     private function nullIfNA($value)
     {
         if ($value === null) return null;
@@ -45,35 +63,25 @@ class VisitorsImport implements ToModel, WithHeadingRow
         return $trim;
     }
 
-    /**
-     * Sokong 3 kes:
-     * 1) Excel serial number (numeric)
-     * 2) String datetime standard (Carbon boleh parse)
-     * 3) Kosong → null
-     */
     private function parseExcelDateTime($value)
     {
         if ($value === null || $value === '') {
             return null;
         }
 
-        // Jika numeric: kemungkinan Excel serial number
         if (is_numeric($value)) {
             try {
                 $dateTime = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject((float)$value);
-                // Format Y-m-d H:i:s untuk simpanan MySQL timestamp
                 return Carbon::instance($dateTime)->format('Y-m-d H:i:s');
             } catch (\Throwable $e) {
-                // fallback cuba parse biasa
+                // fall through
             }
         }
 
-        // Cuba parse sebagai string datetime
         try {
             return Carbon::parse((string)$value)->format('Y-m-d H:i:s');
         } catch (\Throwable $e) {
-            // Kalau parse gagal, biar null supaya validation DB tak pecah
             return null;
         }
-    }  
+    }
 }
