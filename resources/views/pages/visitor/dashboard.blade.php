@@ -131,6 +131,65 @@
                 @endif
             </div>
         </div>
+
+        <div class="col-lg-12 col-md-12 col-sm-12 mt-3">
+            <div class="card">
+                <div class="card-header text-center text-white h6" style="background-color:#03244c;">
+                    SENARAI DATA PENGUNJUNG
+                </div>
+
+                <div class="card-body">
+                    <div class="table-responsive mb-3">
+                        <table id="visitorTable" class="table table-sm table-striped table-hover" style="width:100%;">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Tarikh</th>
+                                    <th>Nama</th>
+                                    <th>Lokasi</th>
+                                    <th>Program/Bidang</th>
+                                    <th class="d-none">ID</th> {{-- lajur ID tersembunyi --}}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse($tableRows as $r)
+                                    <tr>
+                                        <td></td>
+                                        <td
+                                            data-order="{{ $r->response_at ? \Carbon\Carbon::parse($r->response_at)->format('Y-m-d H:i:s') : '0000-00-00 00:00:00' }}">
+                                            {{ $r->response_at ? \Carbon\Carbon::parse($r->response_at)->format('d/m/Y H:i') : '-' }}
+                                        </td>
+                                        <td>{{ $r->full_name }}</td>
+                                        <td>{{ $r->lokasi }}</td>
+                                        <td style="min-width:260px">
+                                            @if ($r->program_bidang)
+                                                @php
+                                                    $items = preg_split('/[,;]+/', $r->program_bidang);
+                                                    $items = array_filter(array_map('trim', $items));
+                                                @endphp
+                                                <ul class="mb-0 ps-3" style="list-style: disc;">
+                                                    @foreach ($items as $item)
+                                                        <li>{{ $item }}</li>
+                                                    @endforeach
+                                                </ul>
+                                            @else
+                                                -
+                                            @endif
+                                        </td>
+                                        <td class="d-none">{{ $r->id }}</td> {{-- nilai ID --}}
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="6" class="text-center">Tiada rekod</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -655,4 +714,71 @@
             setTimeout(() => chart.resize(), 0);
         });
     </script>
+
+    {{-- data table --}}
+    <script>
+        $(document).ready(function() {
+            var table = $('#visitorTable').DataTable({
+                scrollY: "400px",
+                scrollCollapse: true,
+                paging: true,
+                autoWidth: false,
+                responsive: true,
+                fixedHeader: true,
+
+                // Order default ikut lajur ID (index 5) DESC
+                order: [
+                    [5, 'desc']
+                ],
+
+                columnDefs: [
+                    // Kolum # auto number
+                    {
+                        targets: 0,
+                        orderable: false,
+                        searchable: false,
+                        render: function(data, type, row, meta) {
+                            return meta.settings._iDisplayStart + meta.row + 1;
+                        }
+                    },
+                    // Sembunyikan lajur ID tapi masih boleh digunakan untuk sort
+                    {
+                        targets: 5,
+                        visible: false,
+                        searchable: false
+                    },
+
+                    {
+                        targets: 2,
+                        className: 'text-truncate'
+                    }, // Nama
+                    {
+                        targets: 3,
+                        className: 'text-truncate'
+                    }, // Lokasi
+                    {
+                        targets: 4,
+                        className: 'text-truncate'
+                    }, // Program/Bidang
+                ],
+
+                language: {
+                    paginate: {
+                        previous: "Prev",
+                        next: "Next"
+                    },
+                    search: "Cari:",
+                    lengthMenu: "Papar _MENU_ rekod setiap halaman",
+                    info: "Paparan _START_ hingga _END_ daripada _TOTAL_ rekod",
+                    infoEmpty: "Tiada rekod tersedia",
+                    zeroRecords: "Tiada padanan rekod ditemukan",
+                }
+            });
+
+            table.columns.adjust().draw(false);
+        });
+    </script>
+
+
+
 @endsection

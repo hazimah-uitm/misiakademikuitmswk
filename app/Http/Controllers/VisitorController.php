@@ -99,6 +99,12 @@ class VisitorController extends Controller
         $lokasiLabels = $lokasiCounts->pluck('lokasi')->toArray();
         $lokasiData   = $lokasiCounts->pluck('total')->toArray();
 
+        // table data
+        $tableRows = (clone $base)
+            ->select('id', 'response_at', 'full_name', 'lokasi', 'program_bidang')
+            ->orderBy('id', 'desc') 
+            ->get();
+
         // KPI ringkas 
         $totalResponden   = (clone $base)->count();
         $jumlahBidangUnik = count($counter);
@@ -129,6 +135,9 @@ class VisitorController extends Controller
             'allProgramData'    => $allProgramData,
             'lokasiLabels'     => $lokasiLabels,
             'lokasiData'       => $lokasiData,
+
+            // table
+            'tableRows'        => $tableRows,
         ]);
     }
 
