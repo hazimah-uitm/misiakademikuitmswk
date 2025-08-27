@@ -18,7 +18,7 @@ class VisitorController extends Controller
     {
         $perPage = $request->input('perPage', 10);
 
-        $visitorList = Visitor::latest()->paginate($perPage);
+        $visitorList = Visitor::orderBy('id', 'desc') ->paginate($perPage);
 
         return view('pages.visitor.index', [
             'visitorList' => $visitorList,
