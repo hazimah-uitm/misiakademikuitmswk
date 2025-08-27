@@ -4,7 +4,7 @@
     <div class="container-fluid">
 
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4">
-            <h2 class="fw-bold text-dark mb-3 mb-md-0 d-flex align-items-center flex-wrap" style="font-size: 1.8rem;">
+            <h2 class="fw-bold text-dark mb-3 mb-md-0 d-flex align-items-center flex-wrap" style="font-size: 1.5rem;">
                 DASHBOARD MISI AKADEMIK {{ $tahun }}
             </h2>
 
@@ -71,6 +71,18 @@
 
                 @if (count($programLabels) === 0)
                     <div class="text-muted small mt-2">Tiada data program untuk kombinasi filter semasa.</div>
+                @endif
+            </div>
+        </div>
+
+        <div class="card border shadow-sm mt-3">
+            <div class="card-body">
+                <div id="allProgramContainer" style="position:relative;">
+                    <canvas id="allProgramChart"></canvas>
+                </div>
+
+                @if (count($allProgramLabels) === 0)
+                    <div class="text-muted small mt-2">Tiada data bidang untuk kombinasi filter semasa.</div>
                 @endif
             </div>
         </div>
@@ -249,6 +261,158 @@
                     }
                 }]
             });
+        });
+    </script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const labelsAll = @json($allProgramLabels);
+            const dataAll = @json($allProgramData);
+
+            const totalAllBars = dataAll.reduce((s, v) => s + (parseFloat(v) || 0), 0);
+
+            const container = document.getElementById('allProgramContainer');
+
+            // ✅ Tinggi per bar + padding bawah supaya tak terpotong
+            const PER_BAR = 28; // 26–30 pun ok
+            const BOTTOM_PADDING = 80; // ruang untuk label/tooltip
+            const dynamicHeight = (labelsAll.length * PER_BAR) + BOTTOM_PADDING;
+            container.style.height = dynamicHeight + 'px';
+            container.style.marginBottom = '32px'; // ruang dari footer
+
+            const ctxAll = document.getElementById('allProgramChart').getContext('2d');
+
+            const colorsPool = [
+                'rgba(46, 204, 113, 0.85)', 'rgba(52, 152, 219, 0.85)', 'rgba(231, 76, 60, 0.85)',
+                'rgba(241, 196, 15, 0.85)', 'rgba(155, 89, 182, 0.85)', 'rgba(230, 126, 34, 0.85)',
+                'rgba(26, 188, 156, 0.85)', 'rgba(149, 165, 166, 0.85)', 'rgba(243, 156, 18, 0.85)',
+                'rgba(52, 73, 94, 0.85)'
+            ];
+            const bgAll = dataAll.map((_, i) => colorsPool[i % colorsPool.length]);
+
+            const showValueLabels = labelsAll.length <= 60;
+
+            const chartAll = new Chart(ctxAll, {
+                type: 'bar',
+                data: {
+                    labels: labelsAll,
+                    datasets: [{
+                        label: 'Bil. Minat',
+                        data: dataAll,
+                        backgroundColor: bgAll
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    layout: {
+                        padding: {
+                            right: 24,
+                            left: 8,
+                            bottom: 24,
+                            top: 16
+                        }
+                    }, // ruang tambahan
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        title: {
+                            display: true,
+                            text: 'SENARAI SEMUA PROGRAM/BIDANG',
+                            font: {
+                                size: 14,
+                                weight: 'bold'
+                            },
+                            padding: {
+                                top: 6,
+                                bottom: 16
+                            },
+                            color: '#000'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => {
+                                    const val = ctx.parsed.x || 0;
+                                    const pct = totalAllBars ? ((val / totalAllBars) * 100).toFixed(2) :
+                                        '0.00';
+                                    return ` ${val} (${pct}%)`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Jumlah',
+                                font: {
+                                    size: 12,
+                                    weight: 'bold'
+                                },
+                                color: '#000'
+                            },
+                            ticks: {
+                                callback: (v) => Number.isInteger(v) ? v : ''
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Program/Bidang',
+                                font: {
+                                    size: 12,
+                                    weight: 'bold'
+                                },
+                                color: '#000'
+                            },
+                            ticks: {
+                                autoSkip: false,
+                                callback: (value, index) => {
+                                    const label = labelsAll[index] || '';
+                                    return label.length > 60 ? label.slice(0, 57) + '…' : label;
+                                }
+                            }
+                        }
+                    }
+                },
+                plugins: [{
+                    id: 'valueLabelsAll',
+                    afterDatasetsDraw(chart) {
+                        if (!showValueLabels) return;
+                        const {
+                            ctx,
+                            data,
+                            chartArea
+                        } = chart;
+                        const dataset = data.datasets[0];
+                        const meta = chart.getDatasetMeta(0);
+                        ctx.save();
+                        ctx.font = 'bold 11px Arial';
+                        ctx.textAlign = 'left';
+                        ctx.fillStyle = '#000';
+                        dataset.data.forEach((v, i) => {
+                            const bar = meta.data[i];
+                            if (!bar) return;
+                            const val = dataset.data[i] || 0;
+                            const pct = totalAllBars ? ((val / totalAllBars) * 100).toFixed(
+                                1) : '0.0';
+                            // Tulis betul-betul di hujung bar, tapi jangan melepasi chartArea.right
+                            let x = bar.x + 6;
+                            const maxX = chartArea.right - 40;
+                            if (x > maxX) x = maxX;
+                            const y = bar.y + 4;
+                            ctx.fillText(`${val} (${pct}%)`, x, y);
+                        });
+                        ctx.restore();
+                    }
+                }]
+            });
+
+            // Sesetengah layout perlukan resize kecil supaya Chart.js “reflow” betul
+            setTimeout(() => chartAll.resize(), 0);
         });
     </script>
 @endsection

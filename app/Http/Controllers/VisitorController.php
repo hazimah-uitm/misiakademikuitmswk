@@ -30,9 +30,9 @@ class VisitorController extends Controller
     public function dashboard(Request $request)
     {
         // ===== Filters =====
-        $tahun   = $request->input('tahun');           
-        $lokasi  = $request->input('lokasi');          
-        $search  = $request->input('search');          
+        $tahun   = $request->input('tahun');
+        $lokasi  = $request->input('lokasi');
+        $search  = $request->input('search');
 
         $base = Visitor::query();
 
@@ -58,11 +58,10 @@ class VisitorController extends Controller
         $availableLokasi  = Visitor::whereNotNull('lokasi')
             ->select('lokasi')->distinct()->orderBy('lokasi')->pluck('lokasi');
 
-        // ===== KPI ringkas =====
+        // KPI ringkas 
         $totalResponden   = (clone $base)->count();
 
-        // ===== Top Program/Bidang (bar chart) =====
-        // Ambil terus senarai string program_bidang (collection of strings), bukan rows model
+        // Top Program/Bidang (bar chart) 
         $allPrograms = (clone $base)
             ->whereNotNull('program_bidang')
             ->where('program_bidang', '<>', '')
@@ -86,6 +85,10 @@ class VisitorController extends Controller
         $programLabels  = array_keys($topProgram);
         $programData    = array_values($topProgram);
 
+        // All program
+        $allProgramLabels = array_keys($counter);
+        $allProgramData   = array_values($counter);
+
         return view('pages.visitor.dashboard', [
             // filters & dropdowns
             'tahun'            => $tahun,
@@ -100,6 +103,8 @@ class VisitorController extends Controller
             // charts
             'programLabels'    => $programLabels,
             'programData'      => $programData,
+            'allProgramLabels'  => $allProgramLabels,
+            'allProgramData'    => $allProgramData,
         ]);
     }
 
