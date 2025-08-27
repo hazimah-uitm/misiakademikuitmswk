@@ -613,7 +613,7 @@
                         },
                         title: {
                             display: true,
-                            text: 'Jumlah Responden Mengikut Lokasi',
+                            text: 'JUMLAH RESPONDEN MENGIKUT LOKASI',
                             font: {
                                 size: 14,
                                 weight: 'bold'
