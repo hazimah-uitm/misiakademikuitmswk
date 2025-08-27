@@ -58,8 +58,6 @@ class VisitorController extends Controller
         $availableLokasi  = Visitor::whereNotNull('lokasi')
             ->select('lokasi')->distinct()->orderBy('lokasi')->pluck('lokasi');
 
-        // KPI ringkas 
-        $totalResponden   = (clone $base)->count();
 
         // Top Program/Bidang (bar chart) 
         $allPrograms = (clone $base)
@@ -89,6 +87,19 @@ class VisitorController extends Controller
         $allProgramLabels = array_keys($counter);
         $allProgramData   = array_values($counter);
 
+        // KPI ringkas 
+        $totalResponden   = (clone $base)->count();
+        // 2) Bilangan bidang unik
+        $totalPilihanBidang = array_sum($counter);
+        $jumlahBidangUnik = count($counter);
+
+        // 3) Bilangan lokasi unik (ikut data ditapis)
+        $jumlahLokasiUnik = (clone $base)
+            ->whereNotNull('lokasi')
+            ->where('lokasi', '<>', '')
+            ->distinct()
+            ->count('lokasi');
+
         return view('pages.visitor.dashboard', [
             // filters & dropdowns
             'tahun'            => $tahun,
@@ -99,6 +110,8 @@ class VisitorController extends Controller
 
             // KPI
             'totalResponden'   => $totalResponden,
+            'jumlahBidangUnik'   => $jumlahBidangUnik,
+            'jumlahLokasiUnik'   => $jumlahLokasiUnik,
 
             // charts
             'programLabels'    => $programLabels,

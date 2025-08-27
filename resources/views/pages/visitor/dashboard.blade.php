@@ -57,6 +57,28 @@
                     </div>
                 </div>
             </div>
+            <div class="col-md-4">
+                <div class="card border-start border-4 border-success shadow-sm h-100">
+                    <div class="card-body d-flex align-items-center">
+                        <i class="bx bx-map fs-1 text-success me-3"></i>
+                        <div>
+                            <h6 class="text-muted mb-1">Jumlah Lokasi</h6>
+                            <h4 class="fw-bold text-success mb-0">{{ $jumlahLokasiUnik }}</h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card border-start border-4 border-warning shadow-sm h-100">
+                    <div class="card-body d-flex align-items-center">
+                        <i class="bx bx-book-open fs-1 text-warning me-3"></i>
+                        <div>
+                            <h6 class="text-muted mb-1">Jumlah Bidang</h6>
+                            <h4 class="fw-bold text-warning mb-0">{{ $jumlahBidangUnik }}</h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         {{-- Charts --}}
@@ -266,22 +288,23 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const labelsAll = @json($allProgramLabels);
-            const dataAll = @json($allProgramData);
+            // ---------- Data dari controller ----------
+            const labelsAll = @json($allProgramLabels ?? []);
+            const dataAll = @json($allProgramData ?? []);
 
-            const totalAllBars = dataAll.reduce((s, v) => s + (parseFloat(v) || 0), 0);
+            // ---------- Guard: kalau tiada data, jangan inisialisasi ----------
+            if (!Array.isArray(labelsAll) || labelsAll.length === 0) return;
 
+            // ---------- Tinggi dinamik + minimum utk 1–2 bar ----------
             const container = document.getElementById('allProgramContainer');
-
-            // ✅ Tinggi per bar + padding bawah supaya tak terpotong
-            const PER_BAR = 28; // 26–30 pun ok
-            const BOTTOM_PADDING = 80; // ruang untuk label/tooltip
-            const dynamicHeight = (labelsAll.length * PER_BAR) + BOTTOM_PADDING;
+            const PER_BAR = 28; // tinggi per bar (26–30 pun ok)
+            const BOTTOM_PAD = 80; // ruang bawah utk tooltip/label
+            const MIN_HEIGHT = 280; // penting supaya 1–2 bar tak jadi garis
+            const dynamicHeight = Math.max(MIN_HEIGHT, (labelsAll.length * PER_BAR) + BOTTOM_PAD);
             container.style.height = dynamicHeight + 'px';
-            container.style.marginBottom = '32px'; // ruang dari footer
+            container.style.marginBottom = '32px';
 
-            const ctxAll = document.getElementById('allProgramChart').getContext('2d');
-
+            // ---------- Warna berturutan ----------
             const colorsPool = [
                 'rgba(46, 204, 113, 0.85)', 'rgba(52, 152, 219, 0.85)', 'rgba(231, 76, 60, 0.85)',
                 'rgba(241, 196, 15, 0.85)', 'rgba(155, 89, 182, 0.85)', 'rgba(230, 126, 34, 0.85)',
@@ -290,30 +313,43 @@
             ];
             const bgAll = dataAll.map((_, i) => colorsPool[i % colorsPool.length]);
 
+            // ---------- Total utk percent ----------
+            const totalAllBars = dataAll.reduce((s, v) => s + (parseFloat(v) || 0), 0);
+
+            // ---------- Setting label nilai/persen (elak semak bila terlalu banyak) ----------
             const showValueLabels = labelsAll.length <= 60;
 
-            const chartAll = new Chart(ctxAll, {
+            const ctxAll = document.getElementById('allProgramChart').getContext('2d');
+
+            // ---------- Bina chart ----------
+            const allChart = new Chart(ctxAll, {
                 type: 'bar',
                 data: {
                     labels: labelsAll,
                     datasets: [{
                         label: 'Bil. Minat',
                         data: dataAll,
-                        backgroundColor: bgAll
+                        backgroundColor: bgAll,
+
+                        // Pastikan bar kekal “gemuk” walaupun label sedikit
+                        barThickness: 24, // boleh adjust 20–30
+                        maxBarThickness: 36,
+                        categoryPercentage: 0.8,
+                        barPercentage: 0.9
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    indexAxis: 'y',
+                    indexAxis: 'y', // horizontal
                     layout: {
                         padding: {
+                            top: 16,
                             right: 24,
-                            left: 8,
                             bottom: 24,
-                            top: 16
+                            left: 8
                         }
-                    }, // ruang tambahan
+                    },
                     plugins: {
                         legend: {
                             display: false
@@ -355,7 +391,11 @@
                                 color: '#000'
                             },
                             ticks: {
+                                // papar integer sahaja
                                 callback: (v) => Number.isInteger(v) ? v : ''
+                            },
+                            grid: {
+                                drawBorder: false
                             }
                         },
                         y: {
@@ -370,15 +410,20 @@
                             },
                             ticks: {
                                 autoSkip: false,
+                                // potong label terlalu panjang utk kemas
                                 callback: (value, index) => {
                                     const label = labelsAll[index] || '';
                                     return label.length > 60 ? label.slice(0, 57) + '…' : label;
                                 }
+                            },
+                            grid: {
+                                drawBorder: false
                             }
                         }
                     }
                 },
                 plugins: [{
+                    // Tulis "nilai (xx.x%)" di hujung bar — disable automatik bila label banyak
                     id: 'valueLabelsAll',
                     afterDatasetsDraw(chart) {
                         if (!showValueLabels) return;
@@ -389,30 +434,35 @@
                         } = chart;
                         const dataset = data.datasets[0];
                         const meta = chart.getDatasetMeta(0);
+
                         ctx.save();
                         ctx.font = 'bold 11px Arial';
                         ctx.textAlign = 'left';
                         ctx.fillStyle = '#000';
-                        dataset.data.forEach((v, i) => {
+
+                        dataset.data.forEach((_, i) => {
                             const bar = meta.data[i];
                             if (!bar) return;
                             const val = dataset.data[i] || 0;
                             const pct = totalAllBars ? ((val / totalAllBars) * 100).toFixed(
                                 1) : '0.0';
-                            // Tulis betul-betul di hujung bar, tapi jangan melepasi chartArea.right
+
+                            // tulis di hujung bar, tapi jangan keluar chart
                             let x = bar.x + 6;
                             const maxX = chartArea.right - 40;
                             if (x > maxX) x = maxX;
+
                             const y = bar.y + 4;
                             ctx.fillText(`${val} (${pct}%)`, x, y);
                         });
+
                         ctx.restore();
                     }
                 }]
             });
 
-            // Sesetengah layout perlukan resize kecil supaya Chart.js “reflow” betul
-            setTimeout(() => chartAll.resize(), 0);
+            // Paksa reflow kecil untuk layout tertentu
+            setTimeout(() => allChart.resize(), 0);
         });
     </script>
 @endsection
