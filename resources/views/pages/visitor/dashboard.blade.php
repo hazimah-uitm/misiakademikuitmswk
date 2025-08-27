@@ -83,24 +83,47 @@
 
         {{-- Charts --}}
 
-        <div class="card border shadow-sm">
-            <div class="card-body">
-
-                <!-- ✅ Bekas tetap 380px -->
-                <div style="position:relative; height:380px;">
-                    <canvas id="programChart"></canvas>
+        <div class="row">
+            {{-- Top 10 Program --}}
+            <div class="col-md-7 mb-3">
+                <div class="card border shadow-sm h-100">
+                    <div class="card-body">
+                        <div style="position:relative; height:380px;">
+                            <canvas id="programChart"></canvas>
+                        </div>
+                        @if (count($programLabels) === 0)
+                            <div class="text-muted small mt-2">Tiada data program untuk kombinasi filter semasa.</div>
+                        @endif
+                    </div>
                 </div>
+            </div>
 
-                @if (count($programLabels) === 0)
-                    <div class="text-muted small mt-2">Tiada data program untuk kombinasi filter semasa.</div>
-                @endif
+            {{-- Lokasi --}}
+            <div class="col-md-5 mb-3">
+                <div class="card border shadow-sm h-100">
+                    <div class="card-body">
+                        <div id="lokasiChartContainer" style="position:relative; height:480px;">
+                            <canvas id="lokasiChart"></canvas>
+                        </div>
+                        @if (count($lokasiLabels ?? []) === 0)
+                            <div class="text-muted small mt-2">Tiada data lokasi untuk kombinasi filter semasa.</div>
+                        @endif
+                    </div>
+                </div>
             </div>
         </div>
 
         <div class="card border shadow-sm mt-3">
             <div class="card-body">
-                <div id="allProgramContainer" style="position:relative;">
-                    <canvas id="allProgramChart"></canvas>
+                <div id="allProgramScroll"
+                    style="
+    max-height: 520px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;">
+                    <div id="allProgramContainer" style="position:relative; min-height:280px;">
+                        <canvas id="allProgramChart"></canvas>
+                    </div>
                 </div>
 
                 @if (count($allProgramLabels) === 0)
@@ -296,13 +319,17 @@
             if (!Array.isArray(labelsAll) || labelsAll.length === 0) return;
 
             // ---------- Tinggi dinamik + minimum utk 1–2 bar ----------
-            const container = document.getElementById('allProgramContainer');
-            const PER_BAR = 28; // tinggi per bar (26–30 pun ok)
-            const BOTTOM_PAD = 80; // ruang bawah utk tooltip/label
-            const MIN_HEIGHT = 280; // penting supaya 1–2 bar tak jadi garis
-            const dynamicHeight = Math.max(MIN_HEIGHT, (labelsAll.length * PER_BAR) + BOTTOM_PAD);
-            container.style.height = dynamicHeight + 'px';
-            container.style.marginBottom = '32px';
+            const PER_BAR = 28;
+            const BOTTOM_PAD = 80;
+            const MIN_CANVAS = 280;
+
+            const canvasAll = document.getElementById('allProgramChart');
+            const dynamicHeight = Math.max(MIN_CANVAS, (labelsAll.length * PER_BAR) + BOTTOM_PAD);
+
+            // Set tinggi pada canvas supaya Chart.js lukis semua bar
+            canvasAll.height = dynamicHeight; // intrinsic height (px)
+            canvasAll.style.height = dynamicHeight + 'px'; // CSS height (px)
+
 
             // ---------- Warna berturutan ----------
             const colorsPool = [
@@ -463,6 +490,169 @@
 
             // Paksa reflow kecil untuk layout tertentu
             setTimeout(() => allChart.resize(), 0);
+        });
+    </script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const lokasiLabels = @json($lokasiLabels ?? []);
+            const lokasiData = @json($lokasiData ?? []);
+            const totalAll = @json($totalResponden ?? 0); // jumlah untuk % tooltip/label
+
+            if (!Array.isArray(lokasiLabels) || lokasiLabels.length === 0) return;
+
+            // Auto height (tak jadikan 1–2 bar terlalu nipis)
+            const container = document.getElementById('lokasiChartContainer');
+            const PER_BAR = 28;
+            const BOTTOM_PAD = 80;
+            const MIN_HEIGHT = 280;
+            const dynamicH = Math.max(MIN_HEIGHT, (lokasiLabels.length * PER_BAR) + BOTTOM_PAD);
+            container.style.height = dynamicH + 'px';
+            container.style.marginBottom = '32px';
+
+            // Warna kitaran
+            const colors = [
+                'rgba(52,152,219,0.85)', 'rgba(46,204,113,0.85)', 'rgba(231,76,60,0.85)',
+                'rgba(241,196,15,0.85)', 'rgba(155,89,182,0.85)', 'rgba(230,126,34,0.85)',
+                'rgba(26,188,156,0.85)', 'rgba(149,165,166,0.85)', 'rgba(243,156,18,0.85)',
+                'rgba(52,73,94,0.85)'
+            ];
+            const bgAll = lokasiData.map((_, i) => colors[i % colors.length]);
+
+            const showValueLabels = lokasiLabels.length <= 60;
+
+            const ctx = document.getElementById('lokasiChart').getContext('2d');
+            const chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: lokasiLabels,
+                    datasets: [{
+                        label: 'Bil. Responden',
+                        data: lokasiData,
+                        backgroundColor: bgAll,
+                        barThickness: 24,
+                        maxBarThickness: 36,
+                        categoryPercentage: 0.8,
+                        barPercentage: 0.9
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    layout: {
+                        padding: {
+                            top: 16,
+                            right: 24,
+                            bottom: 24,
+                            left: 8
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        title: {
+                            display: true,
+                            text: 'Jumlah Responden Mengikut Lokasi',
+                            font: {
+                                size: 14,
+                                weight: 'bold'
+                            },
+                            color: '#000',
+                            padding: {
+                                top: 10,
+                                bottom: 20
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => {
+                                    const v = ctx.parsed.x || 0;
+                                    const p = totalAll ? ((v / totalAll) * 100).toFixed(2) : '0.00';
+                                    return ` ${v} (${p}%)`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Jumlah',
+                                font: {
+                                    size: 12,
+                                    weight: 'bold'
+                                },
+                                color: '#000'
+                            },
+                            ticks: {
+                                callback: (v) => Number.isInteger(v) ? v : ''
+                            },
+                            grid: {
+                                drawBorder: false
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Lokasi',
+                                font: {
+                                    size: 12,
+                                    weight: 'bold'
+                                },
+                                color: '#000'
+                            },
+                            ticks: {
+                                autoSkip: false,
+                                callback: (val, i) => {
+                                    const label = lokasiLabels[i] || '';
+                                    return label.length > 60 ? label.slice(0, 57) + '…' : label;
+                                }
+                            },
+                            grid: {
+                                drawBorder: false
+                            }
+                        }
+                    }
+                },
+                plugins: [{
+                    id: 'valueLabelsLokasi',
+                    afterDatasetsDraw(chart) {
+                        if (!showValueLabels) return;
+                        const {
+                            ctx,
+                            data,
+                            chartArea
+                        } = chart;
+                        const ds = data.datasets[0];
+                        const meta = chart.getDatasetMeta(0);
+
+                        ctx.save();
+                        ctx.font = 'bold 11px Arial';
+                        ctx.textAlign = 'left';
+                        ctx.fillStyle = '#000';
+
+                        ds.data.forEach((_, i) => {
+                            const bar = meta.data[i];
+                            if (!bar) return;
+                            const val = ds.data[i] || 0;
+                            const pct = totalAll ? ((val / totalAll) * 100).toFixed(1) :
+                                '0.0';
+                            let x = bar.x + 6;
+                            const maxX = chartArea.right - 40;
+                            if (x > maxX) x = maxX;
+                            const y = bar.y + 4;
+                            ctx.fillText(`${val} (${pct}%)`, x, y);
+                        });
+
+                        ctx.restore();
+                    }
+                }]
+            });
+
+            setTimeout(() => chart.resize(), 0);
         });
     </script>
 @endsection

@@ -87,13 +87,22 @@ class VisitorController extends Controller
         $allProgramLabels = array_keys($counter);
         $allProgramData   = array_values($counter);
 
+        // lokasi
+        $lokasiCounts = (clone $base)
+            ->select('lokasi', DB::raw('COUNT(*) as total'))
+            ->whereNotNull('lokasi')
+            ->where('lokasi', '<>', '')
+            ->groupBy('lokasi')
+            ->orderByDesc('total')
+            ->get();
+
+        $lokasiLabels = $lokasiCounts->pluck('lokasi')->toArray();
+        $lokasiData   = $lokasiCounts->pluck('total')->toArray();
+
         // KPI ringkas 
         $totalResponden   = (clone $base)->count();
-        // 2) Bilangan bidang unik
-        $totalPilihanBidang = array_sum($counter);
         $jumlahBidangUnik = count($counter);
 
-        // 3) Bilangan lokasi unik (ikut data ditapis)
         $jumlahLokasiUnik = (clone $base)
             ->whereNotNull('lokasi')
             ->where('lokasi', '<>', '')
@@ -118,6 +127,8 @@ class VisitorController extends Controller
             'programData'      => $programData,
             'allProgramLabels'  => $allProgramLabels,
             'allProgramData'    => $allProgramData,
+            'lokasiLabels'     => $lokasiLabels,
+            'lokasiData'       => $lokasiData,
         ]);
     }
 
