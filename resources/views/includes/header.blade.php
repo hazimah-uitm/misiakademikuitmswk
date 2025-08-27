@@ -8,7 +8,7 @@
             <a class="d-flex align-items-center nav-link dropdown-toggle dropdown-toggle-nocaret" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                 <div class="user-info d-flex align-items-center ps-3">
                     <!-- Profile Image with border and increased size -->
-                    <img src="{{ Auth::user()->profile_image ? asset('public/storage/' . Auth::user()->profile_image) : 'https://via.placeholder.com/150' }}"
+                    <img src="{{ !empty(Auth::user()->profile_image) ? asset('public/storage/' . Auth::user()->profile_image) : asset('public/assets/images/avatars/user.png') }}"
                         alt="Profile Image" class="rounded-circle border border-2 border-primary me-2" width="40" height="40">
                     <!-- Staff ID with improved styling -->
                     <p class="user-name mb-0 text-dark fs-6">{{ Auth::user()->staff_id }}<i class='bx bxs-chevron-down' style="margin-left: 5px;"></i></p>
