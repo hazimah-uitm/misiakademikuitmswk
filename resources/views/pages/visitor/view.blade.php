@@ -13,11 +13,13 @@
                 </ol>
             </nav>
         </div>
+        @hasanyrole('Superadmin|Admin')
         <div class="ms-auto">
             <a href="{{ route('visitor.edit', $visitor->id) }}">
                 <button type="button" class="btn btn-primary mt-2 mt-lg-0">Kemaskini Maklumat</button>
             </a>
         </div>
+        @endhasanyrole
     </div>
     <!-- End Breadcrumb -->
 

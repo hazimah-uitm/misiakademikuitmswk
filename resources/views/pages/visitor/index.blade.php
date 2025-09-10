@@ -12,11 +12,13 @@
                 </ol>
             </nav>
         </div>
-        <div class="ms-auto">
-            <a href="{{ route('visitor.trash') }}">
-                <button type="button" class="btn btn-primary mt-2 mt-lg-0">Senarai Rekod Dipadam</button>
-            </a>
-        </div>
+        @hasanyrole('Superadmin|Admin')
+            <div class="ms-auto">
+                <a href="{{ route('visitor.trash') }}">
+                    <button type="button" class="btn btn-primary mt-2 mt-lg-0">Senarai Rekod Dipadam</button>
+                </a>
+            </div>
+        @endhasanyrole
     </div>
     <!--end breadcrumb-->
     <h6 class="mb-0 text-uppercase">Senarai Data Pengunjung</h6>
@@ -41,25 +43,29 @@
                         </div>
                     </form>
                 </div>
-                <div class="ms-auto">
-                    <a href="{{ route('visitor.create') }}" class="btn btn-primary radius-30 mt-2 mt-lg-0">
-                        <i class="bx bxs-plus-square"></i> Tambah Data Pengunjung
-                    </a>
-                </div>
+                @hasanyrole('Superadmin|Admin')
+                    <div class="ms-auto">
+                        <a href="{{ route('visitor.create') }}" class="btn btn-primary radius-30 mt-2 mt-lg-0">
+                            <i class="bx bxs-plus-square"></i> Tambah Data Pengunjung
+                        </a>
+                    </div>
+                @endhasanyrole
             </div>
+            @hasanyrole('Superadmin|Admin')
+                <div class="row mb-3">
+                    <div class="col-lg-12 d-flex justify-content-end align-items-center gap-2">
+                        <form action="{{ route('visitor.import') }}" method="POST" enctype="multipart/form-data"
+                            class="d-flex align-items-center">
+                            {{ csrf_field() }}
+                            <div class="form-group mb-0">
+                                <input type="file" name="file" class="form-control form-control-sm" required>
+                            </div>
+                            <button type="submit" class="btn btn-info ms-2">Import</button>
+                        </form>
+                    </div>
+                </div>
+            @endhasanyrole
 
-            <div class="row mb-3">
-                <div class="col-lg-12 d-flex justify-content-end align-items-center gap-2">
-                    <form action="{{ route('visitor.import') }}" method="POST" enctype="multipart/form-data"
-                        class="d-flex align-items-center">
-                        {{ csrf_field() }}
-                        <div class="form-group mb-0">
-                            <input type="file" name="file" class="form-control form-control-sm" required>
-                        </div>
-                        <button type="submit" class="btn btn-info ms-2">Import</button>
-                    </form>
-                </div>
-            </div>
             <div class="table-responsive">
                 <table class="table">
                     <thead>
@@ -77,7 +83,8 @@
                         @if (count($visitorList) > 0)
                             @foreach ($visitorList as $visitor)
                                 <tr>
-                                    <td>{{ ($visitorList->currentPage() - 1) * $visitorList->perPage() + $loop->iteration }}</td>
+                                    <td>{{ ($visitorList->currentPage() - 1) * $visitorList->perPage() + $loop->iteration }}
+                                    </td>
                                     <td class="text-wrap">{{ ucfirst($visitor->full_name) }}</td>
                                     <td>{{ $visitor->phone }}</td>
                                     <td>{{ $visitor->email }}</td>
@@ -92,23 +99,25 @@
                                             -
                                         @endif
                                     </td>
-                                    <td>{{ $visitor->lokasi ?? "-"}}</td>
+                                    <td>{{ $visitor->lokasi ?? '-' }}</td>
                                     <td>
-                                        <a href="{{ route('visitor.edit', $visitor->id) }}" class="btn btn-info btn-sm"
-                                            data-bs-toggle="tooltip" data-bs-placement="bottom" title="Kemaskini">
-                                            <i class="bx bxs-edit"></i>
-                                        </a>
                                         <a href="{{ route('visitor.show', $visitor->id) }}" class="btn btn-primary btn-sm"
                                             data-bs-toggle="tooltip" data-bs-placement="bottom" title="Papar">
                                             <i class="bx bx-show"></i>
                                         </a>
-                                        <a type="button" data-bs-toggle="tooltip" data-bs-placement="bottom"
-                                            data-bs-title="Padam">
-                                            <span class="btn btn-danger btn-sm" data-bs-toggle="modal"
-                                                data-bs-target="#deleteModal{{ $visitor->id }}">
-                                                <i class="bx bx-trash"></i>
-                                            </span>
-                                        </a>
+                                        @hasanyrole('Superadmin|Admin')
+                                            <a href="{{ route('visitor.edit', $visitor->id) }}" class="btn btn-info btn-sm"
+                                                data-bs-toggle="tooltip" data-bs-placement="bottom" title="Kemaskini">
+                                                <i class="bx bxs-edit"></i>
+                                            </a>
+                                            <a type="button" data-bs-toggle="tooltip" data-bs-placement="bottom"
+                                                data-bs-title="Padam">
+                                                <span class="btn btn-danger btn-sm" data-bs-toggle="modal"
+                                                    data-bs-target="#deleteModal{{ $visitor->id }}">
+                                                    <i class="bx bx-trash"></i>
+                                                </span>
+                                            </a>
+                                        @endhasanyrole
                                     </td>
                                 </tr>
                             @endforeach
