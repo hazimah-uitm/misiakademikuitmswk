@@ -15,11 +15,12 @@ class VisitorsImport implements ToModel, WithHeadingRow
 
         $data = [
             'response_at'    => $responseAt,
+            'lokasi_program' => $this->nullIfNA($row['lokasi_program'] ?? null),
             'full_name'      => $this->nullIfNA($row['nama_penuh_huruf_besar'] ?? null),
             'phone'          => $this->nullIfNA($row['no_telefon_bimbit'] ?? null),
             'email'          => $this->normalizeEmail($row['alamat_emel'] ?? null),
             'program_bidang' => $this->nullIfNA($row['senarai_program_bidang_pengajian'] ?? null),
-            'lokasi'         => $this->nullIfNA($row['lokasi'] ?? null),
+            'lokasi'         => $this->nullIfNA($row['lokasi_pameran_misi_akademik'] ?? null),
         ];
 
         // Tetapkan "kunci" untuk cari rekod sedia ada
