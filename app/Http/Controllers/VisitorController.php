@@ -18,14 +18,13 @@ class VisitorController extends Controller
     {
         $perPage = $request->input('perPage', 10);
 
-        $visitorList = Visitor::orderBy('id', 'desc') ->paginate($perPage);
+        $visitorList = Visitor::orderBy('id', 'desc')->paginate($perPage);
 
         return view('pages.visitor.index', [
             'visitorList' => $visitorList,
             'perPage' => $perPage,
         ]);
     }
-
 
     public function dashboard(Request $request)
     {
@@ -40,9 +39,23 @@ class VisitorController extends Controller
         if (!empty($tahun)) {
             $base->whereYear('response_at', $tahun);
         }
+
         if (!empty($lokasi)) {
-            $base->where('lokasi', $lokasi);
+            $lokasiLower = strtolower(trim($lokasi));
+
+            // Jika user pilih "Gedong", padankan SEMUA varian (gedong / patinggi ali)
+            if ($lokasiLower === 'gedong') {
+                $base->where(function ($q) {
+                    $q->orWhereRaw('LOWER(lokasi) LIKE ?', ['%gedong%'])
+                        ->orWhereRaw('LOWER(lokasi) LIKE ?', ['%pertinggi ali%'])
+                        ->orWhereRaw('LOWER(lokasi) LIKE ?', ['%patinggi ali%']);
+                });
+            } else {
+                // default: padanan case-insensitive exact
+                $base->whereRaw('LOWER(TRIM(lokasi)) = ?', [$lokasiLower]);
+            }
         }
+
         if (!empty($search)) {
             $base->where(function ($q) use ($search) {
                 $q->where('full_name', 'LIKE', "%{$search}%")
@@ -51,15 +64,27 @@ class VisitorController extends Controller
             });
         }
 
-        // untuk dropdown & paparan
-        $availableYears   = Visitor::whereNotNull('response_at')
+        // ===== Dropdowns =====
+        $availableYears = Visitor::whereNotNull('response_at')
             ->select(DB::raw('YEAR(response_at) as y'))->distinct()
             ->orderBy('y', 'desc')->pluck('y');
-        $availableLokasi  = Visitor::whereNotNull('lokasi')
-            ->select('lokasi')->distinct()->orderBy('lokasi')->pluck('lokasi');
 
+        // Normalize dropdown lokasi: semua varian gedong/patinggi ali => "Gedong"
+        $availableLokasi = Visitor::whereNotNull('lokasi')
+            ->pluck('lokasi')
+            ->filter()
+            ->map(function ($v) {
+                $n = strtolower($v);
+                if (strpos($n, 'gedong') !== false || strpos($n, 'patinggi ali') !== false || strpos($n, 'pertinggi ali') !== false) {
+                    return 'Gedong';
+                }
+                return ucwords(trim($v));
+            })
+            ->unique()
+            ->sort()
+            ->values();
 
-        // Top Program/Bidang (bar chart) 
+        // ===== Top Program/Bidang (bar chart) =====
         $allPrograms = (clone $base)
             ->whereNotNull('program_bidang')
             ->where('program_bidang', '<>', '')
@@ -68,52 +93,71 @@ class VisitorController extends Controller
         $counter = [];
         foreach ($allPrograms as $progStr) {
             if (!$progStr) continue;
-            // pecah ikut koma/semicolon
             $items = preg_split('/[,;]+/', $progStr);
             foreach ($items as $raw) {
                 $name = trim($raw);
                 if ($name === '') continue;
-                $name = preg_replace('/\s+/', ' ', $name); // normalisasi ringkas
+                $name = preg_replace('/\s+/', ' ', $name);
                 $counter[$name] = isset($counter[$name]) ? $counter[$name] + 1 : 1;
             }
         }
 
         arsort($counter);
-        $topProgram     = array_slice($counter, 0, 10, true);
-        $programLabels  = array_keys($topProgram);
-        $programData    = array_values($topProgram);
+        $topProgram        = array_slice($counter, 0, 10, true);
+        $programLabels     = array_keys($topProgram);
+        $programData       = array_values($topProgram);
+        $allProgramLabels  = array_keys($counter);
+        $allProgramData    = array_values($counter);
 
-        // All program
-        $allProgramLabels = array_keys($counter);
-        $allProgramData   = array_values($counter);
-
-        // lokasi
+        // ===== Lokasi (group & normalize ke Gedong) =====
         $lokasiCounts = (clone $base)
             ->select('lokasi', DB::raw('COUNT(*) as total'))
             ->whereNotNull('lokasi')
             ->where('lokasi', '<>', '')
             ->groupBy('lokasi')
-            ->orderByDesc('total')
             ->get();
 
-        $lokasiLabels = $lokasiCounts->pluck('lokasi')->toArray();
-        $lokasiData   = $lokasiCounts->pluck('total')->toArray();
+        $lokasiNormalized = [];
+        foreach ($lokasiCounts as $row) {
+            $name = strtolower(trim($row->lokasi));
+            if (strpos($name, 'gedong') !== false || strpos($name, 'patinggi ali') !== false || strpos($name, 'pertinggi ali') !== false) {
+                $label = 'Gedong';
+            } else {
+                $label = ucwords($name);
+            }
+            if (!isset($lokasiNormalized[$label])) $lokasiNormalized[$label] = 0;
+            $lokasiNormalized[$label] += $row->total;
+        }
+        arsort($lokasiNormalized);
+        $lokasiLabels = array_keys($lokasiNormalized);
+        $lokasiData   = array_values($lokasiNormalized);
 
-        // table data
+        // ===== Table data =====
         $tableRows = (clone $base)
             ->select('id', 'response_at', 'full_name', 'lokasi', 'program_bidang')
-            ->orderBy('id', 'desc') 
+            ->orderBy('id', 'desc')
             ->get();
 
-        // KPI ringkas 
+        // ===== KPI ringkas =====
         $totalResponden   = (clone $base)->count();
         $jumlahBidangUnik = count($counter);
 
-        $jumlahLokasiUnik = (clone $base)
+        // Kira unik lokasi berdasarkan label normalized
+        $lokasiRawForUnique = (clone $base)
             ->whereNotNull('lokasi')
             ->where('lokasi', '<>', '')
-            ->distinct()
-            ->count('lokasi');
+            ->pluck('lokasi');
+
+        $jumlahLokasiUnik = $lokasiRawForUnique
+            ->map(function ($v) {
+                $n = strtolower(trim($v));
+                if (strpos($n, 'gedong') !== false || strpos($n, 'patinggi ali') !== false || strpos($n, 'pertinggi ali') !== false) {
+                    return 'Gedong';
+                }
+                return ucwords($n);
+            })
+            ->unique()
+            ->count();
 
         return view('pages.visitor.dashboard', [
             // filters & dropdowns
@@ -124,15 +168,15 @@ class VisitorController extends Controller
             'availableLokasi'  => $availableLokasi,
 
             // KPI
-            'totalResponden'   => $totalResponden,
+            'totalResponden'     => $totalResponden,
             'jumlahBidangUnik'   => $jumlahBidangUnik,
             'jumlahLokasiUnik'   => $jumlahLokasiUnik,
 
             // charts
             'programLabels'    => $programLabels,
             'programData'      => $programData,
-            'allProgramLabels'  => $allProgramLabels,
-            'allProgramData'    => $allProgramData,
+            'allProgramLabels' => $allProgramLabels,
+            'allProgramData'   => $allProgramData,
             'lokasiLabels'     => $lokasiLabels,
             'lokasiData'       => $lokasiData,
 
@@ -140,6 +184,120 @@ class VisitorController extends Controller
             'tableRows'        => $tableRows,
         ]);
     }
+
+    // public function dashboard(Request $request)
+    // {
+    //     // ===== Filters =====
+    //     $tahun   = $request->input('tahun');
+    //     $lokasi  = $request->input('lokasi');
+    //     $search  = $request->input('search');
+
+    //     $base = Visitor::query();
+
+    //     // apply filters
+    //     if (!empty($tahun)) {
+    //         $base->whereYear('response_at', $tahun);
+    //     }
+    //     if (!empty($lokasi)) {
+    //         $base->where('lokasi', $lokasi);
+    //     }
+    //     if (!empty($search)) {
+    //         $base->where(function ($q) use ($search) {
+    //             $q->where('full_name', 'LIKE', "%{$search}%")
+    //                 ->orWhere('lokasi', 'LIKE', "%{$search}%")
+    //                 ->orWhere('program_bidang', 'LIKE', "%{$search}%");
+    //         });
+    //     }
+
+    //     // untuk dropdown & paparan
+    //     $availableYears   = Visitor::whereNotNull('response_at')
+    //         ->select(DB::raw('YEAR(response_at) as y'))->distinct()
+    //         ->orderBy('y', 'desc')->pluck('y');
+    //     $availableLokasi  = Visitor::whereNotNull('lokasi')
+    //         ->select('lokasi')->distinct()->orderBy('lokasi')->pluck('lokasi');
+
+
+    //     // Top Program/Bidang (bar chart) 
+    //     $allPrograms = (clone $base)
+    //         ->whereNotNull('program_bidang')
+    //         ->where('program_bidang', '<>', '')
+    //         ->pluck('program_bidang');
+
+    //     $counter = [];
+    //     foreach ($allPrograms as $progStr) {
+    //         if (!$progStr) continue;
+    //         // pecah ikut koma/semicolon
+    //         $items = preg_split('/[,;]+/', $progStr);
+    //         foreach ($items as $raw) {
+    //             $name = trim($raw);
+    //             if ($name === '') continue;
+    //             $name = preg_replace('/\s+/', ' ', $name); // normalisasi ringkas
+    //             $counter[$name] = isset($counter[$name]) ? $counter[$name] + 1 : 1;
+    //         }
+    //     }
+
+    //     arsort($counter);
+    //     $topProgram     = array_slice($counter, 0, 10, true);
+    //     $programLabels  = array_keys($topProgram);
+    //     $programData    = array_values($topProgram);
+
+    //     // All program
+    //     $allProgramLabels = array_keys($counter);
+    //     $allProgramData   = array_values($counter);
+
+    //     // lokasi
+    //     $lokasiCounts = (clone $base)
+    //         ->select('lokasi', DB::raw('COUNT(*) as total'))
+    //         ->whereNotNull('lokasi')
+    //         ->where('lokasi', '<>', '')
+    //         ->groupBy('lokasi')
+    //         ->orderByDesc('total')
+    //         ->get();
+
+    //     $lokasiLabels = $lokasiCounts->pluck('lokasi')->toArray();
+    //     $lokasiData   = $lokasiCounts->pluck('total')->toArray();
+
+    //     // table data
+    //     $tableRows = (clone $base)
+    //         ->select('id', 'response_at', 'full_name', 'lokasi', 'program_bidang')
+    //         ->orderBy('id', 'desc') 
+    //         ->get();
+
+    //     // KPI ringkas 
+    //     $totalResponden   = (clone $base)->count();
+    //     $jumlahBidangUnik = count($counter);
+
+    //     $jumlahLokasiUnik = (clone $base)
+    //         ->whereNotNull('lokasi')
+    //         ->where('lokasi', '<>', '')
+    //         ->distinct()
+    //         ->count('lokasi');
+
+    //     return view('pages.visitor.dashboard', [
+    //         // filters & dropdowns
+    //         'tahun'            => $tahun,
+    //         'lokasi'           => $lokasi,
+    //         'search'           => $search,
+    //         'availableYears'   => $availableYears,
+    //         'availableLokasi'  => $availableLokasi,
+
+    //         // KPI
+    //         'totalResponden'   => $totalResponden,
+    //         'jumlahBidangUnik'   => $jumlahBidangUnik,
+    //         'jumlahLokasiUnik'   => $jumlahLokasiUnik,
+
+    //         // charts
+    //         'programLabels'    => $programLabels,
+    //         'programData'      => $programData,
+    //         'allProgramLabels'  => $allProgramLabels,
+    //         'allProgramData'    => $allProgramData,
+    //         'lokasiLabels'     => $lokasiLabels,
+    //         'lokasiData'       => $lokasiData,
+
+    //         // table
+    //         'tableRows'        => $tableRows,
+    //     ]);
+    // }
 
     public function create()
     {
